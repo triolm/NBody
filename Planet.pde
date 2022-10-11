@@ -1,6 +1,19 @@
 final static double scale = 6e8d;
 final static double G = 6.6743e-11d;
 
+static double scale(double n){
+  return(n/scale);
+}
+
+static void setAllOrigins(Planet o, Planet[] planets){
+    for(Planet p : planets){
+      if(p != o){
+        p.setOriginTo(o);
+      }
+    }
+    o.setOriginTo(o);
+} 
+
 
 //abstract planet class does not include draw
 abstract class Planet{
@@ -59,8 +72,8 @@ abstract class Planet{
   }
     
   void drawVector(){
-    float nx = (float)(x/scale);
-    float ny =  (float)(y/scale);
+    float nx = (float)scale(x);
+    float ny =  (float)scale(y);
     Vector v = velocity.scale(vectorLineScale);
     float dx = (float)v.getDX();
     float dy = (float)v.getDY();
@@ -71,9 +84,16 @@ abstract class Planet{
   }
   
   void addFrame(){
-    trailX.add(x);
-    trailY.add(y);
+    trailX.add(scale(x));
+    trailY.add(scale(y));
   }
+  
+  void setOriginTo(Planet p){
+    this.x -= p.getX();
+    this.y -= p.getY();
+  }
+  
+  
   
   abstract void drawTrail();
   
@@ -93,8 +113,8 @@ class ColorPlanet extends Planet{
   void draw(){
     fill(c);
     noStroke();
-    float nx = (float)(x/scale);
-    float ny =  (float)(y/scale);
+    float nx = (float)scale(x);
+    float ny =  (float)scale(y);
     circle(nx,ny,(float)Math.pow(radius,1/4f));
   }
   
@@ -102,7 +122,7 @@ class ColorPlanet extends Planet{
     fill(c);
     noStroke();
     for(int i = 0; i < trailX.size(); i++){
-      circle((float)(trailX.get(i)/scale), (float)(trailY.get(i)/scale), 4f);
+      circle((float)(trailX.get(i).doubleValue()), (float)(trailY.get(i).doubleValue()), 4f);
     }
   }
 }
@@ -122,8 +142,8 @@ class ImagePlanet extends Planet{
   }
   
   void draw(){
-    float nx = (float)(x/scale);
-    float ny =  (float)(y/scale);
+    float nx = (float)scale(x);
+    float ny =  (float)scale(y);
     image(img,nx,ny);
   }
   
@@ -131,7 +151,7 @@ class ImagePlanet extends Planet{
     fill(trailColor);
     noStroke();
     for(int i = 0; i < trailX.size(); i++){
-      circle((float)(trailX.get(i)/scale), (float)(trailY.get(i)/scale), 4f);
+      circle((float)(trailX.get(i).doubleValue()), (float)(trailY.get(i).doubleValue()), 4f);
     }
   }
 }
