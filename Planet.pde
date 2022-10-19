@@ -4,6 +4,10 @@ static double scale(double n) {
     return(n/scale);
 }
 
+Point scale(Point p) {
+    return new Point(scale(p.getX()), scale(p.getY()));
+}
+
 static void setAllOrigins(Planet o, Planet[] planets) {
     for (Planet p : planets) {
         if (p != o) {
@@ -13,44 +17,47 @@ static void setAllOrigins(Planet o, Planet[] planets) {
     o.setOriginTo(o);
 }
 
-static double calculateMassCenter(double m1, double x1, double m2, double x2) {
-    return ((m1 * x1) + (m2 * x2)) / (m1 + m2);
-}
 
 
 //abstract planet class does not include draw
 abstract class Planet {
-    double x, y, mass, radius;
-    Vector velocity;
-    ArrayList<Double> trailX;
-    ArrayList<Double> trailY;
 
-    public Planet(double startX, double startY, double mass, double radius, Vector startVelocity) {
-        this.x = startX;
-        this.trailX = new ArrayList<Double>();
-        this.y = startY;
-        this.trailY = new ArrayList<Double>();
+    double mass, radius;
+    Point pos;
+    Vector velocity;
+    ArrayList<Point> trail;
+
+    public Planet(Point startPos, double mass, double radius, Vector startVelocity) {
+        this.pos = startPos;
+        this.trail = new ArrayList<Point>();
         this.mass = mass;
         this.velocity = startVelocity;
         this.radius = radius;
     }
 
     //getters
+    Point getPos() {
+        return pos;
+    }
+
     double getX() {
-        return x;
+        return pos.getX();
     }
+
     double getY() {
-        return y;
+        return pos.getY();
     }
+
     double getMass() {
         return mass;
     }
+    
+    ArrayList<Point> getTrail(){
+        return trail;
+    }
 
     double getDistance(Planet other) {
-        return Math.sqrt(Math.abs(
-            Math.pow((x - other.getX()), 2) +
-            Math.pow((y - other.getY()), 2)
-            ));
+        return(pos.getDist(other.getPos()));
     }
 
     //math functions
@@ -63,7 +70,7 @@ abstract class Planet {
 
     Vector getGravFrom(Planet other) {
         //normal vector to sun
-        return new Vector(other.getX() - x, other.getY() - y).normalize()
+        return new Vector(other.getX() - pos.getX(), other.getY() - pos.getY()).normalize()
             //F / m = a
             .scale(getForce(other)/mass);
     }
@@ -73,47 +80,46 @@ abstract class Planet {
     }
 
     void move() {
-        x += velocity.getDX();
-        y += velocity.getDY();
+        pos = new Point(
+            pos.getX() +  velocity.getDX(),
+            pos.getY() +  velocity.getDY()
+            );
     }
 
     void drawVector() {
-        float nx = (float)scale(x);
-        float ny =  (float)scale(y);
+        Point p = scale(pos);
         Vector v = velocity.scale(vectorLineScale);
         float dx = (float)v.getDX();
         float dy = (float)v.getDY();
 
         stroke(255, 255, 255);
         strokeWeight(3);
-        line(nx, ny, nx+dx, ny+dy);
+        line(p.getFlX(), p.getFlY(), p.getFlX()+dx, p.getFlY()+dy);
     }
 
     void addFrame() {
-        trailX.add(scale(x));
-        trailY.add(scale(y));
+        trail.add(pos);
     }
 
     void setOriginTo(Planet p) {
-        this.x -= p.getX();
-        this.y -= p.getY();
+        pos = new Point(pos.getX()  - p.getX(), pos.getY() - p.getY());
     }
 
-    //double calculateL4X(Planet small) {
-    //  double quotient = (mass - small.getMass()) / (mass + small.getMass());
-    //  return (getDistance(small)/2) * quotient;
-    //}
-
-    //double calculateL4Y(Planet small) {
-    //  return (Math.pow(3, 1/2)/2) * getDistance(small);
-    //}
+    double calculateL4Y(Planet small) {
+        return (Math.sqrt(3) / 2) * getDistance(small);
+    }
 
     double calculateL1X(Planet small) {
         double quotient = small.getMass() / (3 * mass);
         return getDistance(small) * Math.cbrt(quotient);
     }
 
-    abstract void drawTrail();
+    void drawTrail() {
+        for (int i = 0; i < trail.size(); i++) {
+            Point p = scale(trail.get(i));
+            circle(p.getFlX(), p.getFlY(), 4f);
+        }
+    };
 
     abstract void draw();
 }
@@ -121,26 +127,23 @@ abstract class Planet {
 
 class ColorPlanet extends Planet {
     color c;
-    public ColorPlanet(double startX, double startY, double mass, double radius,
+    public ColorPlanet(Point startPos, double mass, double radius,
         Vector startVelocity, color clr) {
-        super(startX, startY, mass, radius, startVelocity);
+        super(startPos, mass, radius, startVelocity);
         this.c = clr;
     }
 
     void draw() {
         fill(c);
         noStroke();
-        float nx = (float)scale(x);
-        float ny =  (float)scale(y);
-        circle(nx, ny, (float)Math.pow(radius, 1/4f));
+        Point p = scale(pos);
+        circle(p.getFlX(), p.getFlY(), (float)Math.pow(radius, 1/4f));
     }
 
     void drawTrail() {
         fill(c);
         noStroke();
-        for (int i = 0; i < trailX.size(); i++) {
-            circle((float)(trailX.get(i).doubleValue()), (float)(trailY.get(i).doubleValue()), 4f);
-        }
+        super.drawTrail();
     }
 }
 
@@ -148,9 +151,9 @@ class ImagePlanet extends Planet {
     PImage img;
     color trailColor;
 
-    public ImagePlanet(double startX, double startY, double mass, double radius,
+    public ImagePlanet(Point startPos, double mass, double radius,
         Vector startVelocity, PImage img, color trailColor) {
-        super(startX, startY, mass, radius, startVelocity);
+        super(startPos, mass, radius, startVelocity);
         this.trailColor = trailColor;
         this.img = img;
 
@@ -159,16 +162,13 @@ class ImagePlanet extends Planet {
     }
 
     void draw() {
-        float nx = (float)scale(x);
-        float ny =  (float)scale(y);
-        image(img, nx, ny);
+        Point p = scale(pos);
+        image(img, p.getFlX(), p.getFlY());
     }
 
     void drawTrail() {
         fill(trailColor);
         noStroke();
-        for (int i = 0; i < trailX.size(); i++) {
-            circle((float)(trailX.get(i).doubleValue()), (float)(trailY.get(i).doubleValue()), 4f);
-        }
+        super.drawTrail();
     }
 }
